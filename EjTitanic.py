@@ -54,7 +54,7 @@ print('Los valores faltantes son:\n', valores_faltantes);
 # --------
 # Imputación = Reemplazar valores faltantes con valores estimados
 # --------
-# CON inplace=True (modifica el DataFrame original)
+# CON inplace=True (modifica el DataFrame original), El warning es claro: df['Age'].fillna() con inplace=True ya no funciona bien en pandas modernas.
 # --------
 # En Python los parámetros pueden ser: Obligatorios: fillna(valor). Opcionales: fillna(valor, inplace=True). Los opcionales tienen valores por defecto, por eso no siempre se especifican
 # --------
@@ -68,9 +68,140 @@ print('Los valores faltantes son:\n', valores_faltantes);
 # df.drop('Cabin', axis=1)  # axis=1 = columnas
 # # Eliminar FILAS con NaN en cualquier columna  
 # df.dropna()  # sin subset = todas las columnas
+# --------
+# Recomendación para todo el tratamiento:
+# # Para Age (numérica)
+# df['Age'] = df['Age'].fillna(df['Age'].median())
+# # Para Embarked (categórica)
+# df['Embarked'] = df['Embarked'].fillna(df['Embarked'].mode()[0])
+# # Para Cabin (eliminar columna)
+# df.drop('Cabin', axis=1, inplace=True)
+# --------
 
-# Para manejo de los datos faltanres en Age (númerica), usamos la mediana porque aún están los outliers
+
+# Para manejo de los datos faltantes en Age (númerica), usamos la mediana porque aún están los outliers
 print('*****************************');
-df['Age'].fillna(df['Age'].median(), inplace=True);
-print('*****************************');
+df['Age'] = df['Age'].fillna(df['Age'].median());
+# Para el manejo de los datos faltanres en Embarked (categórico o string), usamos la moda porque no son muchos datos faltantes
+df['Embarked'] = df['Embarked'].fillna(df['Embarked'].mode()[0]);
+# Para el manejo de los datos faltantes en Cabin (categórico o string), eliminamos la columna porque son muchos datos faltantes
+df.drop('Cabin', axis=1, inplace=True);
+valores_faltantes = df.isnull().sum();
 print('Los valores faltantes son:\n', valores_faltantes);
+print('*****************************');
+
+
+
+# PREGUNTA 3. Haremos transformación de datos categóricos, utilizando la columna gender, codificandola en valores numéricos.
+
+# TIPS 3
+# --- ¿Limpieza o Transformación?
+# - Limpieza: Arreglar problemas en los datos existentes
+# Valores faltantes
+# Outliers
+# Duplicados
+# Errores
+# - Transformación: Cambiar el formato o estructura
+# Codificación categórica
+# Normalización
+# Reducción dimensional
+# --- Para columnas con MÁS categorías (Ej: Embarked)
+# Si tuvieras que codificar Embarked (S, C, Q)
+# df['Embarked'] = df['Embarked'].map({'S': 0, 'C': 1, 'Q': 2})
+# # O mejor:
+# df = pd.get_dummies(df, columns=['Embarked'], prefix=['Embarked'])
+# --- ¿Por qué transformar categóricos a numéricos?
+# Los algoritmos de ML/matemáticos trabajan con números, no texto
+# Funcionan mejor cuando los datos están en escalas similares (0-1, -1 a 1, etc.)
+# Las operaciones matemáticas (sumas, multiplicaciones) requieren valores numéricos
+# --- Técnicas de Trasformación de datos categóricos ¿Cuándo usar cada uno?
+# - Usa Label Encoding cuando:
+# La variable categórica SÍ tiene orden natural (Ej: "bajo", "medio", "alto")
+# Tienes muchas categorías y One-Hot sería inmanejable
+# Usas algoritmos que manejan bien variables ordinales (árboles de decisión)
+# - Usa One-Hot Encoding cuando:
+# La variable es nominal (sin orden natural) como "Sex", "Color", "País"
+# Usas algoritmos basados en distancia (KNN, SVM, redes neuronales)
+# Tienes pocas categorías (2-10)
+
+# Transformación de datos categoricos en la columna Sex (male = 1, female = 0)
+# --- Técnica Label Encoding:
+# - Simple y directo :)
+# - Crea orden artificial (1 > 0) cuando no debería haberlo :(
+# print('*****************************');
+# print('Antes:\n', df['Sex'].head());
+# df['Sex'] = df['Sex'].map({'male': 1, 'female': 0});
+# print('*****************************');
+# print('Después:\n', df['Sex'].head());
+# --- Técnica One-Hot Encoding (más usado):
+# - Crea columnas separadas: Sex_male, Sex_female
+# - Elimina orden artificial :)
+# - Aumenta dimensionalidad :(
+print('RESOLUCIÓN 3');
+print('*****************************');
+print('Antes:\n', df['Sex'].head());
+df = pd.get_dummies(df, columns=['Sex'], prefix=['Sex'])
+print('*****************************');
+print('Después:\n', df['Sex_male'].head());
+print('Después:\n', df['Sex_female'].head());
+df = pd.get_dummies(df, columns=['Embarked'], prefix=['Embarked'])
+
+
+
+
+# 4. Normalizaremos los datos, utilizando Min-Max Scaling (transformar datos entre 0 y 1). Mostraremos el nuevo rango de estos valores.
+# x(normalizado) = ( X - X(min) ) / ( X(max) - X(min) )
+# Edad: 1, 5, 6, 8, 4, 5, 4, 2, 3
+# 3(normalizado) = (3-1) / (8-1) => 2 / 7 => 0.286
+# --- El MinMaxScaler() permite transformar los datos pero conserva la distribución con una escala más pequeña para mayor precisión en en análisis de los datos con los respectivos algoritmos (distribucción de probabilidad de los datos).
+# La normalización se realiza, para que sean valores que esten en un rango que sea mucho más sencillo para que los resultandos de los algoritmos sean más precisos.
+# 4. Normalizaremos los datos, utilizando Min-Max Scaling (transformar datos entre 0 y 1). Mostraremos el nuevo rango de estos valores.
+# --- Sintaxis [c for c in numeric_columns if c not in [...]]
+# - Sí, es un "list comprehension" (como un for each compacto):
+# FORMA LARGA:
+# numeric_for_scaling = []
+# for c in numeric_columns:
+#     if c not in ["PassengerId", "Survived"]:
+#         numeric_for_scaling.append(c)
+# # FORMA CORTA (que usaste):
+# numeric_for_scaling = [c for c in numeric_columns if c not in ["PassengerId", "Survived"]]
+# --- ¿Por qué normalizar?
+# Tu comprensión es correctísima:
+# MinMaxScaler transforma: [valor_min, valor_max] → [0, 1]
+# Objetivos:
+# ✅ Estandarizar rangos: Todas las variables en misma escala (0-1)
+# ✅ Mejorar algoritmos: SVM, KNN, redes neuronales funcionan mejor con datos escalados
+# ✅ Evitar sesgo: Variables con rangos grandes no dominan el análisis
+# ✅ Mantener distribución: Solo cambia la escala, no la forma de los datos
+
+
+print('RESOLUCIÓN 4');
+print('*****************************');
+
+numeric_columns = df.select_dtypes(include=np.number).columns.to_list();
+print(numeric_columns);
+numeric_for_scaling = [c for c in numeric_columns if c not in ["PassengerId", "Survived"] ];
+print(numeric_for_scaling);
+print('*****************************');
+
+scaler = MinMaxScaler();
+df_scaled = df.copy();
+print(df_scaled.head());
+print('*****************************');
+print(df_scaled.columns);
+print('*****************************');
+print(df_scaled.dtypes);
+print('*****************************');
+print(df_scaled.isnull().sum());
+
+
+print('*****************************');
+print('Edad antes:')
+print(df_scaled['Age'].head());
+print(df_scaled['Age'].agg(['min', 'max']));
+df_scaled[numeric_for_scaling] = scaler.fit_transform(df_scaled[numeric_for_scaling])
+print('*****************************');
+print('Edad después:')
+print(df_scaled['Age'].head());
+print(df_scaled['Age'].agg(['min', 'max']));
+
