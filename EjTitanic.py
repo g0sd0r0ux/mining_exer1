@@ -194,7 +194,6 @@ print(df_scaled.dtypes);
 print('*****************************');
 print(df_scaled.isnull().sum());
 
-
 print('*****************************');
 print('Edad antes:')
 print(df_scaled['Age'].head());
@@ -205,3 +204,125 @@ print('Edad después:')
 print(df_scaled['Age'].head());
 print(df_scaled['Age'].agg(['min', 'max']));
 
+
+# 5. Detectaremos de valores atípicos, utilizaremos gráficos (boxplot) de Matplotlib, y pensaremos que podemos hacer con estos valores atípicos.
+# --- Los valores atípicos son los datos que se alejan mucho del resto de los otros valores
+# --- Se pueden detectar gráficamente o con algunas formulas, pero funciona de la misma manera
+# --- boxplot usa o es equivalente al IQR
+# --- IQR, es una manera en la que se determinan los valores atípicos por los cuartiles que le damos a los datos, normalmente se divide en 4
+# --- Q1 = 0%-25%, Q2 = 25%-50%, Q3 = 50%-75%, Q4 = 75%-100%
+# --- El IQR solo se queda con los datos de Q2 y Q3, ya que por lo general el 90% de los datos se encuentra en esos rangos cuando es una distribucción normal
+# --- boxplot, muestra en un cuadrado los datos que están en la curva central y las rayas de de los costados y los outliers que se escapan de la distribucción normal
+# --- EXPLICACIÓN GRÁFICO
+# plt.subplot(1,2,1)           # ← Activo gráfico izquierdo
+# sns.boxplot(y=df['Age'])     # ← Gráfico de Edad
+# plt.title('Boxplot - Edad')  # ← Título para gráfico izquierdo
+# plt.subplot(1,2,2)           # ← Activo gráfico derecho  
+# sns.boxplot(y=df['Fare'])    # ← Gráfico de Fare
+# plt.title('Boxplot - Fare')  # ← Título para gráfico derecho
+# --- Lo que se ve en la imagen:
+# Gráfico izquierdo (Age): La mayoría entre 20-40 años, algunos muy jóvenes/ancianos
+# Gráfico derecho (Fare): Muchos outliers (precios de tickets muy altos)
+# Rectángulo azul = Q1 a Q3 (50% datos centrales)
+# Línea en el rectángulo = Mediana (valor del medio)
+# Bigotes = Datos "normales" (fuera del 50% pero dentro del rango aceptable)
+# Puntos fuera de bigotes = Outliers (valores atípicos)
+# --- Sobre los outliers de edad (>55 años):
+# -- ¿Mantenerlos o eliminarlos? Depende:
+# OPCIÓN 1: MANTENER (RECOMENDADO para edad)
+# - Personas mayores >55 años EXISTÍAN en el Titanic
+# - Son datos reales, no errores
+# - Proporcionan información valiosa
+# OPCIÓN 2: ELIMINAR solo si:
+# - Son errores de medición (ej: edad = 200)
+# - Distorsionan mucho tu análisis específico
+
+print('*****************************');
+print('RESOLUCIÓN 5');
+
+# Tamaño figura
+plt.figure(figsize=(10,5));
+
+# Gráfico edad a la izquierda
+plt.subplot(1,2,1);
+sns.boxplot(y=df['Age'])
+plt.title('Boxplot - Edad');
+
+# Gráfico tarifa a la derecha
+plt.subplot(1, 2, 2);
+sns.boxplot(y=df['Fare']);
+plt.title('Boxplot - Fare');
+
+# Se ajustan los gráficos y se muestra
+plt.tight_layout();
+plt.show();
+
+# Identificar outliers por regla IQR (Fare)...
+# IQR = Q3-Q1
+# límite inferior = Q1 + (1.5 * IQR)
+# límite superior = Q3 - (1.5 * IQR)
+
+# Series = Una sola columna de un DataFrame
+def detectar_outliers_iqr(series) :
+    q1 = series.quantile(0.25);
+    q3 = series.quantile(0.75);
+    iqr = q3 - q1;
+    print('*****************************');
+    print('Valor de Q1', q1)
+    print('*****************************');
+    print('Valor de Q3: ', q3)
+    print('*****************************');
+    print('Valor de IQR: ', iqr)
+    inferior = q1 - (1.5 * iqr);
+    superior = q3 + (1.5 * iqr);
+    print('*****************************');
+    print('Valor inferior: ', inferior)
+    print('Valor superior: ', superior)
+    print('*****************************');
+    print(series)
+    return series[ (series < inferior) | (series > superior) ];
+
+outliers_fare = detectar_outliers_iqr(df['Fare']);
+print('*****************************');
+print(f'Número de outliers (IQR) en Fare:  {outliers_fare.shape[0]}' );
+print(outliers_fare.head());
+
+# En ejemplo del Titanic:
+# Fare = muchos outliers (precios muy altos de primera clase)
+# Age = pocos outliers (personas muy ancianas)
+# IQR es la forma MÁS COMÚN de detectar outliers numéricamente (boxplots lo usan internamente).
+
+
+# 6. Realizaremos análisis de componentes principales, aplicando una técnica de reducción de dimensiones sobre las variables numéricas del dataset (por ejemplo, PCA).
+# PCA (Principal Component Analysis)
+# --- No todos los datos son analizables, pero si existe pueden existir correlaciones que no se deben perder, puediendo verse a través de la varianza
+# --- Reducir dimenciones (menos columnas), pero que la correlación no se pierda (varianza)
+# --- Objetivo transformar un conjunto de información correlacionado, en un conjunto más pequeño de variables que mantengan su varianza asociada
+print('*****************************');
+print('RESOLUCIÓN 6');
+
+# Ejemplo para una variable de PCA
+# Se piensan en variables que pueden estar relacionadas: altura, peso, ancho de hombros, talla de zapatos
+# Una persona más alta es más probable que pese más, y sus hombros sean más anchos y tenga una talla de zapatos grandes (probablemente exista correlación)
+# PCA se usa cuando hay muchas variables numéricas, las variables están correlacionadas, proyectar visualización más precisa sin tantas columnas, preprocesamiento de machile learning, comprensión de datos... (simplificando modelos)
+
+# Variables que se van a analizar (Aplicar PCA) en base al contexto
+num_feats=['Age', 'SibSp', 'Parch', 'Fare', 'Pclass'];
+imputer = SimpleImputer(strategy='median');
+X_num = imputer.fit_transform(df[num_feats]);
+
+std = StandardScaler();
+X_scaled = std.fit_transform(X_num);
+pca = PCA(n_components=2);
+X_pca = pca.fit_transform(X_scaled)
+
+print("\n Varianza explicada por cada componente PCA", pca.explained_variance_ratio_)
+print("Varianza explicada acumulada: ", np.cumsum(pca.explained_variance_ratio_))
+
+plt.figure(figsize=(7,5));
+sns.scatterplot(x=X_pca[:,0], y=X_pca[:,1], hue=df['Survived'].astype(str), palette="deep")
+plt.xlabel('PC1');
+plt.ylabel('PC2');
+plt.title('PCA (2 componentes) - Titanic');
+plt.legend(title='Survived');
+plt.show();
